@@ -1,0 +1,203 @@
+.month-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 300px;
+  max-width: 300px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  flex-shrink: 0;
+  height: 100%;
+}
+
+.month-column__header {
+  padding: 14px 16px 0;
+  position: sticky;
+  top: 0;
+  background: var(--surface-1);
+  z-index: 1;
+}
+
+.month-column__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 8px;
+}
+
+.month-column__title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.month-column__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+
+.month-column__count {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  min-width: 24px;
+  text-align: center;
+}
+
+.month-column__delete-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  transition: all 0.15s ease;
+}
+
+.month-column__delete-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.month-column__warning {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #f59e0b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.month-column__list {
+  padding: 6px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.month-column__list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.month-column__list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.month-column__empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  padding: 24px 0;
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  transition: border-color 0.2s;
+}
+
+/* ── Order Rows and Gaps ── */
+.month-column__row-container {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Gap Dropzones */
+.month-column__gap-dropzone {
+  height: 8px;
+  margin: -4px 0;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 10;
+}
+
+.month-column__gap-dropzone--active {
+  height: 28px;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px dashed var(--accent);
+  margin: 6px 0;
+}
+
+.month-column__gap-dropzone--active::before {
+  content: "إفلات هنا للترتيب الجديد";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: var(--accent-hover);
+  font-weight: 600;
+}
+
+/* Row (side-by-side) */
+.month-column__order-row {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid transparent;
+  border-radius: 14px;
+  transition: all 0.2s ease;
+  align-items: stretch;
+  position: relative;
+}
+
+.month-column__order-row--active {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--accent);
+}
+
+.month-column__order-row > .lesson-card {
+  flex: 1;
+  min-width: 120px; /* Allow shrinking side-by-side but set a reasonable minimum */
+  max-width: 100%;
+}
+
+/* Join Indicator */
+.month-column__row-join-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 0 12px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  background: rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  user-select: none;
+  min-height: 80px;
+}
+
+.month-column__order-row--active .month-column__row-join-indicator {
+  border-color: var(--accent);
+  color: var(--accent-hover);
+  background: rgba(99, 102, 241, 0.05);
+}
+

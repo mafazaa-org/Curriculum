@@ -1,0 +1,37 @@
+.json-importer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.json-importer__textarea {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-family: 'Courier New', monospace;
+  font-size: 0.78rem;
+  padding: 10px 12px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.json-importer__textarea:focus {
+  border-color: var(--accent);
+}
+
+.json-importer__error {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #f87171;
+}
+
+.json-importer__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
