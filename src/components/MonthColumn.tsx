@@ -18,6 +18,7 @@ interface Props {
   onDropOnGap: (e: React.DragEvent, month: number, order: number | null) => void;
   onDeleteLesson: (id: string) => void;
   onDeleteColumn: (month: number) => void;
+  onOpenNotifications: (lesson: Lesson) => void;
 }
 
 export function MonthColumn({
@@ -33,6 +34,7 @@ export function MonthColumn({
   onDropOnGap,
   onDeleteLesson,
   onDeleteColumn,
+  onOpenNotifications,
 }: Props) {
   // Group lessons by order
   const groupedByOrder = new Map<number, Lesson[]>();
@@ -117,6 +119,7 @@ export function MonthColumn({
                       e.preventDefault();
                     }}
                     onDelete={onDeleteLesson}
+                    onOpenNotifications={onOpenNotifications}
                   />
                 ))}
 

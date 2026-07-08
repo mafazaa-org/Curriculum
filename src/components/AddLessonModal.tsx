@@ -19,6 +19,7 @@ function generateId(): string {
 export function AddLessonModal({ onAdd, onClose, defaultMonth, nextOrder, months }: Props) {
   const [url, setUrl] = useState("");
   const [month, setMonth] = useState(defaultMonth);
+  const [notification, setNotification] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +30,7 @@ export function AddLessonModal({ onAdd, onClose, defaultMonth, nextOrder, months
     setError(null);
     try {
       const meta = await fetchVideoMeta(url.trim());
+
       const lesson: Lesson = {
         id: generateId(),
         youtubeUrl: url.trim(),
@@ -36,6 +38,7 @@ export function AddLessonModal({ onAdd, onClose, defaultMonth, nextOrder, months
         month,
         title: meta.title,
         thumbnail_url: meta.thumbnail_url,
+        ...(notification.trim() ? { notification: notification.trim() } : {}),
       };
       onAdd(lesson);
       onClose();
@@ -84,6 +87,17 @@ export function AddLessonModal({ onAdd, onClose, defaultMonth, nextOrder, months
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="add-modal__field">
+            <label className="add-modal__label">إشعار الدرس (اختياري)</label>
+            <input
+              className="add-modal__input"
+              type="text"
+              placeholder="اكتب إشعاراً لهذا الدرس إذا أردت..."
+              value={notification}
+              onChange={(e) => setNotification(e.target.value)}
+            />
           </div>
 
           {error && <p className="add-modal__error">{error}</p>}

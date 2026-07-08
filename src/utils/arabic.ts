@@ -32,8 +32,6 @@ export function getArabicOrdinal(num: number): string {
   }
   
   if (num > 20 && num < 30) {
-    const units = ["", "الحادي", "الثاني", "الثالث", "الرابع", "الخامس", "السادس", "السابع", "الثامن", "التائس"];
-    // Wait, "التاسع" is ninth. Let's fix spelling:
     const correctUnits = ["", "الحادي", "الثاني", "الثالث", "الرابع", "الخامس", "السادس", "السابع", "الثامن", "التاسع"];
     return `${correctUnits[num - 20]} والعشرون`;
   }

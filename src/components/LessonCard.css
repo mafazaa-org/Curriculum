@@ -146,3 +146,41 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+.lesson-card__footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.lesson-card__notifications-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-family: 'Cairo', sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.lesson-card__notifications-btn:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.lesson-card__notifications-btn--active {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent-hover);
+}
+
+.lesson-card__notifications-btn--active:hover {
+  background: rgba(99, 102, 241, 0.25);
+  color: #fff;
+}
+

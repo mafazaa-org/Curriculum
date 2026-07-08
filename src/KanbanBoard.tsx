@@ -4,6 +4,7 @@ import { MonthColumn } from "./components/MonthColumn";
 import { JsonImporter } from "./components/JsonImporter";
 import { JsonExporter } from "./components/JsonExporter";
 import { AddLessonModal } from "./components/AddLessonModal";
+import { NotificationsModal } from "./components/NotificationsModal";
 import "./KanbanBoard.css";
 
 // ─── Drag & Drop helpers ───────────────────────────────────────────────────
@@ -33,6 +34,7 @@ export default function KanbanBoard() {
   const [activeMonths, setActiveMonths] = useState<number[]>([1]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
+  const [activeNotificationsLesson, setActiveNotificationsLesson] = useState<Lesson | null>(null);
 
   // drag state
   const draggingId = useRef<string | null>(null);
@@ -104,6 +106,12 @@ export default function KanbanBoard() {
 
       return remaining.filter((l) => l.month !== month).concat(normalizedTarget);
     });
+  };
+
+  const handleUpdateLesson = (updatedLesson: Lesson) => {
+    setLessons((prev) =>
+      prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l))
+    );
   };
 
   // ── Drag & Drop ───────────────────────────────────────────────────────────
@@ -305,6 +313,7 @@ export default function KanbanBoard() {
                 onDropOnGap={handleDropOnGap}
                 onDeleteLesson={handleDeleteLesson}
                 onDeleteColumn={handleDeleteMonth}
+                onOpenNotifications={setActiveNotificationsLesson}
               />
             );
           })}
@@ -319,6 +328,20 @@ export default function KanbanBoard() {
           defaultMonth={defaultMonth}
           nextOrder={lessons.length + 1}
           months={activeMonths}
+        />
+      )}
+
+      {/* ── Notifications Modal ── */}
+      {activeNotificationsLesson && (
+        <NotificationsModal
+          lesson={activeNotificationsLesson}
+          onClose={() => setActiveNotificationsLesson(null)}
+          onUpdateNotification={(newNotification) => {
+            handleUpdateLesson({
+              ...activeNotificationsLesson,
+              notification: newNotification,
+            });
+          }}
         />
       )}
     </div>

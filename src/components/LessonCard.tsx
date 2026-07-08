@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Lesson } from "../types";
 import { fetchVideoMeta } from "../utils/youtube";
+import { Bell } from "lucide-react";
 import "./LessonCard.css";
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
   onDelete: (id: string) => void;
+  onOpenNotifications: (lesson: Lesson) => void;
 }
 
 export function LessonCard({
@@ -19,6 +21,7 @@ export function LessonCard({
   onDragOver,
   onDrop,
   onDelete,
+  onOpenNotifications,
 }: Props) {
   const [title, setTitle] = useState(lesson.title);
   const [thumbnail, setThumbnail] = useState(lesson.thumbnail_url);
@@ -88,15 +91,35 @@ export function LessonCard({
         <p className="lesson-card__title">
           {loading ? "جارٍ التحميل..." : title || "درس بدون عنوان"}
         </p>
-        <a
-          href={lesson.youtubeUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="lesson-card__link"
-          onClick={(e) => e.stopPropagation()}
-        >
-          مشاهدة على يوتيوب ↗
-        </a>
+        <div className="lesson-card__footer-row">
+          <a
+            href={lesson.youtubeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="lesson-card__link"
+            onClick={(e) => e.stopPropagation()}
+          >
+            مشاهدة على يوتيوب ↗
+          </a>
+          <button
+            type="button"
+            className={`lesson-card__notifications-btn ${
+              lesson.notification
+                ? "lesson-card__notifications-btn--active"
+                : ""
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenNotifications(lesson);
+            }}
+            title="إدارة الإشعار"
+          >
+            <Bell size={13} />
+            <span>
+              {lesson.notification ? "تعديل الإشعار" : "إضافة إشعار"}
+            </span>
+          </button>
+        </div>
       </div>
     </div>
   );

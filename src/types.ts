@@ -5,4 +5,6 @@ export interface Lesson {
   month: number;
   title: string;
   thumbnail_url: string;
+  notification?: string;
 }
+
