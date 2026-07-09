@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { Lesson } from "./types";
 import { MonthColumn } from "./components/MonthColumn";
 import { JsonImporter } from "./components/JsonImporter";
@@ -30,8 +30,20 @@ function normalizeColumnOrders(columnLessons: Lesson[]): Lesson[] {
 // ─── Component ────────────────────────────────────────────────────────────
 
 export default function KanbanBoard() {
-  const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [activeMonths, setActiveMonths] = useState<number[]>([1]);
+  const [lessons, setLessons] = useState<Lesson[]>(() => {
+    const saved = localStorage.getItem("curriculum_lessons");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [activeMonths, setActiveMonths] = useState<number[]>(() => {
+    const saved = localStorage.getItem("curriculum_active_months");
+    const initialized = localStorage.getItem("curriculum_initialized") === "true";
+    if (!initialized) return [];
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [loading, setLoading] = useState(() => {
+    return localStorage.getItem("curriculum_initialized") !== "true";
+  });
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
   const [activeNotificationsLesson, setActiveNotificationsLesson] = useState<Lesson | null>(null);
@@ -41,14 +53,102 @@ export default function KanbanBoard() {
   const [dropTargetRow, setDropTargetRow] = useState<string | null>(null);
   const [dropTargetGap, setDropTargetGap] = useState<string | null>(null);
 
+  // Load initial data if not initialized
+  useEffect(() => {
+    const initialized = localStorage.getItem("curriculum_initialized") === "true";
+    if (!initialized) {
+      setLoading(true);
+      fetch("https://api.npoint.io/2035ddb6c563a8a7b572")
+        .then((res) => {
+          if (!res.ok) throw new Error("فشل تحميل البيانات الافتراضية");
+          return res.json();
+        })
+        .then((data: Lesson[]) => {
+          setLessons(data);
+          const uniqueMonths = Array.from(new Set(data.map((l) => l.month))).sort(
+            (a, b) => a - b
+          );
+          const initialMonths = uniqueMonths.length > 0 ? uniqueMonths : [1];
+          setActiveMonths(initialMonths);
+          localStorage.setItem("curriculum_lessons", JSON.stringify(data));
+          localStorage.setItem("curriculum_active_months", JSON.stringify(initialMonths));
+          localStorage.setItem("curriculum_initialized", "true");
+        })
+        .catch((err) => {
+          console.error(err);
+          setFetchError("حدث خطأ أثناء تحميل البيانات الافتراضية.");
+          setActiveMonths([1]);
+          localStorage.setItem("curriculum_initialized", "true");
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+  }, []);
+
+  // Sync state to localStorage
+  useEffect(() => {
+    const initialized = localStorage.getItem("curriculum_initialized") === "true";
+    if (initialized) {
+      localStorage.setItem("curriculum_lessons", JSON.stringify(lessons));
+      localStorage.setItem("curriculum_active_months", JSON.stringify(activeMonths));
+    }
+  }, [lessons, activeMonths]);
+
   // ── Import ────────────────────────────────────────────────────────────────
   const handleImport = (imported: Lesson[]) => {
     setLessons(imported);
     const uniqueMonths = Array.from(new Set(imported.map((l) => l.month))).sort(
       (a, b) => a - b
     );
-    setActiveMonths(uniqueMonths.length > 0 ? uniqueMonths : [1]);
+    const targetMonths = uniqueMonths.length > 0 ? uniqueMonths : [1];
+    setActiveMonths(targetMonths);
+    localStorage.setItem("curriculum_lessons", JSON.stringify(imported));
+    localStorage.setItem("curriculum_active_months", JSON.stringify(targetMonths));
+    localStorage.setItem("curriculum_initialized", "true");
     setShowImporter(false);
+  };
+
+  const handleRestoreDefault = () => {
+    const confirmRestore = window.confirm("هل أنت متأكد من رغبتك في استعادة المنهج الافتراضي؟ سيؤدي هذا إلى مسح التعديلات الحالية.");
+    if (!confirmRestore) return;
+
+    setLoading(true);
+    setFetchError(null);
+    fetch("https://api.npoint.io/2035ddb6c563a8a7b572")
+      .then((res) => {
+        if (!res.ok) throw new Error("فشل تحميل البيانات الافتراضية");
+        return res.json();
+      })
+      .then((data: Lesson[]) => {
+        setLessons(data);
+        const uniqueMonths = Array.from(new Set(data.map((l) => l.month))).sort(
+          (a, b) => a - b
+        );
+        const newMonths = uniqueMonths.length > 0 ? uniqueMonths : [1];
+        setActiveMonths(newMonths);
+        localStorage.setItem("curriculum_lessons", JSON.stringify(data));
+        localStorage.setItem("curriculum_active_months", JSON.stringify(newMonths));
+        localStorage.setItem("curriculum_initialized", "true");
+      })
+      .catch((err) => {
+        console.error(err);
+        setFetchError("حدث خطأ أثناء استعادة البيانات الافتراضية.");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
+  const handleClearCurriculum = () => {
+    const confirmClear = window.confirm("هل أنت متأكد من رغبتك في مسح المنهج بالكامل؟ لا يمكن التراجع عن هذه الخطوة.");
+    if (!confirmClear) return;
+
+    setLessons([]);
+    setActiveMonths([]);
+    localStorage.setItem("curriculum_lessons", JSON.stringify([]));
+    localStorage.setItem("curriculum_active_months", JSON.stringify([]));
+    localStorage.setItem("curriculum_initialized", "true");
   };
 
   // ── Add/Delete Month ──────────────────────────────────────────────────────
@@ -247,6 +347,17 @@ export default function KanbanBoard() {
   // ─────────────────────────────────────────────────────────────────────────
   const defaultMonth = activeMonths.length > 0 ? activeMonths[0] : 1;
 
+  if (loading) {
+    return (
+      <div className="kanban-root kanban-root--loading" dir="rtl">
+        <div className="kanban-loading">
+          <div className="kanban-loading__spinner">⏳</div>
+          <p className="kanban-loading__text">جاري تحميل المنهج الافتراضي...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="kanban-root" dir="rtl">
       {/* ── Toolbar ── */}
@@ -270,6 +381,13 @@ export default function KanbanBoard() {
           </button>
           <JsonExporter lessons={lessons} />
           <button
+            className="btn btn--danger"
+            onClick={handleClearCurriculum}
+            disabled={lessons.length === 0 && activeMonths.length === 0}
+          >
+            🗑️ مسح المنهج
+          </button>
+          <button
             className="btn btn--primary"
             onClick={() => setShowAddModal(true)}
           >
@@ -285,14 +403,28 @@ export default function KanbanBoard() {
         </div>
       )}
 
+      {fetchError && (
+        <div className="kanban-error-banner">
+          <span>⚠️ {fetchError}</span>
+          <button className="btn btn--secondary btn--sm" onClick={handleRestoreDefault}>
+            إعادة المحاولة
+          </button>
+        </div>
+      )}
+
       {/* ── Board ── */}
       {activeMonths.length === 0 ? (
         <div className="kanban-empty">
           <div className="kanban-empty__icon">📋</div>
           <p className="kanban-empty__title">لا توجد أشهر بعد</p>
-          <button className="btn btn--primary" onClick={handleAddMonth}>
-            إضافة شهر جديد للبدء
-          </button>
+          <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+            <button className="btn btn--primary" onClick={handleAddMonth}>
+              إضافة شهر جديد للبدء
+            </button>
+            <button className="btn btn--secondary" onClick={handleRestoreDefault}>
+              🔄 استعادة المنهج الافتراضي
+            </button>
+          </div>
         </div>
       ) : (
         <div className="kanban-board" onDragEnd={reset}>

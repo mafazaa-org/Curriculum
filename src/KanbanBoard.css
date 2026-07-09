@@ -114,3 +114,62 @@
   font-size: 0.85rem;
   text-align: center;
 }
+
+/* ── Loading State ── */
+.kanban-root--loading {
+  justify-content: center;
+  align-items: center;
+}
+
+.kanban-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  background: var(--surface-1);
+  padding: 32px 48px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24);
+}
+
+.kanban-loading__spinner {
+  font-size: 2.5rem;
+  animation: pulse-spin 1.5s infinite ease-in-out;
+}
+
+.kanban-loading__text {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+@keyframes pulse-spin {
+  0% { transform: scale(1) rotate(0deg); opacity: 0.8; }
+  50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+  100% { transform: scale(1) rotate(360deg); opacity: 0.8; }
+}
+
+/* ── Error Banner ── */
+.kanban-error-banner {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 12px 24px;
+  margin: 0 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 0.9rem;
+  color: #fca5a5;
+  animation: slide-down 0.25s ease;
+}
+
+.btn--sm {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  border-radius: 6px;
+}
+

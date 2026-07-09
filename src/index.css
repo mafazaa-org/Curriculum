@@ -83,3 +83,12 @@ html, body, #root {
   background: var(--surface-2);
   color: var(--text-primary);
 }
+
+.btn--danger {
+  background: #ef4444;
+  color: #fff;
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: #f87171;
+}
