@@ -49,7 +49,7 @@ export default function KanbanBoard() {
   const [activeNotificationsLesson, setActiveNotificationsLesson] = useState<Lesson | null>(null);
 
   // drag state
-  const draggingId = useRef<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetRow, setDropTargetRow] = useState<string | null>(null);
   const [dropTargetGap, setDropTargetGap] = useState<string | null>(null);
 
@@ -216,7 +216,7 @@ export default function KanbanBoard() {
 
   // ── Drag & Drop ───────────────────────────────────────────────────────────
   const handleDragStart = (id: string) => {
-    draggingId.current = id;
+    setDraggingId(id);
   };
 
   const handleDragOverRow = (e: React.DragEvent, month: number, order: number) => {
@@ -237,7 +237,7 @@ export default function KanbanBoard() {
 
   const handleDropOnRow = (e: React.DragEvent, targetMonth: number, targetOrder: number) => {
     e.preventDefault();
-    const sourceId = draggingId.current;
+    const sourceId = draggingId;
     if (!sourceId) {
       reset();
       return;
@@ -287,7 +287,7 @@ export default function KanbanBoard() {
     targetOrder: number | null
   ) => {
     e.preventDefault();
-    const sourceId = draggingId.current;
+    const sourceId = draggingId;
     if (!sourceId) {
       reset();
       return;
@@ -339,7 +339,7 @@ export default function KanbanBoard() {
   };
 
   const reset = () => {
-    draggingId.current = null;
+    setDraggingId(null);
     setDropTargetRow(null);
     setDropTargetGap(null);
   };
@@ -435,7 +435,7 @@ export default function KanbanBoard() {
                 key={month}
                 month={month}
                 lessons={cols}
-                draggingId={draggingId.current}
+                draggingId={draggingId}
                 dropTargetRow={dropTargetRow}
                 dropTargetGap={dropTargetGap}
                 onDragStart={handleDragStart}

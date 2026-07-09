@@ -92,9 +92,15 @@ export function MonthColumn({
               <div
                 className={`month-column__gap-dropzone ${
                   isGapActive ? "month-column__gap-dropzone--active" : ""
-                }`}
-                onDragOver={(e) => onDragOverGap(e, month, order)}
-                onDrop={(e) => onDropOnGap(e, month, order)}
+                } ${draggingId ? "month-column__gap-dropzone--dragging" : ""}`}
+                onDragOver={(e) => {
+                  e.stopPropagation();
+                  onDragOverGap(e, month, order);
+                }}
+                onDrop={(e) => {
+                  e.stopPropagation();
+                  onDropOnGap(e, month, order);
+                }}
               />
 
               {/* Order Row Container */}
@@ -102,8 +108,14 @@ export function MonthColumn({
                 className={`month-column__order-row ${
                   isRowActive ? "month-column__order-row--active" : ""
                 }`}
-                onDragOver={(e) => onDragOverRow(e, month, order)}
-                onDrop={(e) => onDropOnRow(e, month, order)}
+                onDragOver={(e) => {
+                  e.stopPropagation();
+                  onDragOverRow(e, month, order);
+                }}
+                onDrop={(e) => {
+                  e.stopPropagation();
+                  onDropOnRow(e, month, order);
+                }}
               >
                 {rowLessons.map((lesson) => (
                   <LessonCard
@@ -114,9 +126,11 @@ export function MonthColumn({
                     onDragOver={(e) => {
                       // Row handles the dragover & drop events for the order group
                       e.preventDefault();
+                      e.stopPropagation();
                     }}
                     onDrop={(e) => {
                       e.preventDefault();
+                      e.stopPropagation();
                     }}
                     onDelete={onDeleteLesson}
                     onOpenNotifications={onOpenNotifications}
@@ -139,9 +153,15 @@ export function MonthColumn({
           <div
             className={`month-column__gap-dropzone ${
               dropTargetGap === `${month}-end` ? "month-column__gap-dropzone--active" : ""
-            }`}
-            onDragOver={(e) => onDragOverGap(e, month, null)}
-            onDrop={(e) => onDropOnGap(e, month, null)}
+            } ${draggingId ? "month-column__gap-dropzone--dragging" : ""}`}
+            onDragOver={(e) => {
+              e.stopPropagation();
+              onDragOverGap(e, month, null);
+            }}
+            onDrop={(e) => {
+              e.stopPropagation();
+              onDropOnGap(e, month, null);
+            }}
           />
         )}
 
