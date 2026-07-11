@@ -45,6 +45,10 @@ export default function KanbanBoard() {
   });
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [lastUsedMonth, setLastUsedMonth] = useState<number | null>(() => {
+    const saved = localStorage.getItem("curriculum_last_used_month");
+    return saved ? Number(saved) : null;
+  });
   const [showImporter, setShowImporter] = useState(false);
   const [activeNotificationsLesson, setActiveNotificationsLesson] = useState<Lesson | null>(null);
 
@@ -177,6 +181,8 @@ export default function KanbanBoard() {
 
   // ── Add/Delete lesson ─────────────────────────────────────────────────────
   const handleAdd = (lesson: Lesson) => {
+    setLastUsedMonth(lesson.month);
+    localStorage.setItem("curriculum_last_used_month", String(lesson.month));
     setLessons((prev) => {
       const targetMonthLessons = prev.filter((l) => l.month === lesson.month);
       const maxOrder =
@@ -345,7 +351,12 @@ export default function KanbanBoard() {
   };
 
   // ─────────────────────────────────────────────────────────────────────────
-  const defaultMonth = activeMonths.length > 0 ? activeMonths[0] : 1;
+  const defaultMonth =
+    lastUsedMonth !== null && activeMonths.includes(lastUsedMonth)
+      ? lastUsedMonth
+      : activeMonths.length > 0
+        ? activeMonths[0]
+        : 1;
 
   if (loading) {
     return (

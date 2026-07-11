@@ -31,14 +31,36 @@ export interface VideoMeta {
   thumbnail_url: string;
 }
 
-/** Fetch video title and thumbnail via YouTube oEmbed */
+const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY as string;
+
+/** Fetch video title and thumbnail via YouTube Data API v3 */
 export async function fetchVideoMeta(youtubeUrl: string): Promise<VideoMeta> {
-  const oEmbedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(youtubeUrl)}&format=json`;
-  const res = await fetch(oEmbedUrl);
-  if (!res.ok) throw new Error(`oEmbed fetch failed: ${res.status}`);
+  const videoId = getYouTubeVideoId(youtubeUrl);
+  if (!videoId) throw new Error(`Could not extract video ID from: ${youtubeUrl}`);
+
+  if (!API_KEY) throw new Error("YouTube API key is not configured (VITE_YOUTUBE_API_KEY)");
+
+  const apiUrl =
+    `https://www.googleapis.com/youtube/v3/videos` +
+    `?part=snippet&id=${encodeURIComponent(videoId)}&key=${encodeURIComponent(API_KEY)}`;
+
+  const res = await fetch(apiUrl);
+  if (!res.ok) throw new Error(`YouTube API request failed: ${res.status}`);
+
   const data = await res.json();
+  const item = data.items?.[0];
+  if (!item) throw new Error(`Video not found: ${videoId}`);
+
+  const snippet = item.snippet;
+  const thumbnail =
+    snippet.thumbnails?.high?.url ??
+    snippet.thumbnails?.medium?.url ??
+    snippet.thumbnails?.default?.url ??
+    `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
   return {
-    title: data.title ?? "Untitled",
-    thumbnail_url: data.thumbnail_url ?? "",
+    title: snippet.title ?? "Untitled",
+    thumbnail_url: thumbnail,
   };
 }
+

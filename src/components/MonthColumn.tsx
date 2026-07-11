@@ -1,9 +1,10 @@
+import { useRef, useEffect } from "react";
 import type { Lesson } from "../types";
 import { LessonCard } from "./LessonCard";
 import { getArabicOrdinal } from "../utils/arabic";
 import "./MonthColumn.css";
 
-const MAX_CARDS = 25;
+const MAX_CARDS = 20;
 
 interface Props {
   month: number;
@@ -36,6 +37,73 @@ export function MonthColumn({
   onDeleteColumn,
   onOpenNotifications,
 }: Props) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const scrollIntervalRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!draggingId) {
+      if (scrollIntervalRef.current !== null) {
+        clearInterval(scrollIntervalRef.current);
+        scrollIntervalRef.current = null;
+      }
+    }
+    return () => {
+      if (scrollIntervalRef.current !== null) {
+        clearInterval(scrollIntervalRef.current);
+      }
+    };
+  }, [draggingId]);
+
+  const stopScrolling = () => {
+    if (scrollIntervalRef.current !== null) {
+      clearInterval(scrollIntervalRef.current);
+      scrollIntervalRef.current = null;
+    }
+  };
+
+  const handleDragOverList = (e: React.DragEvent) => {
+    e.preventDefault();
+
+    // Fallback gap drop handler if dragging over the empty area of the list itself
+    if (e.target === e.currentTarget) {
+      onDragOverGap(e, month, null);
+    }
+
+    const container = listRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const relativeY = e.clientY - rect.top;
+    const threshold = 50; // pixels from top/bottom to start scrolling
+    const maxSpeed = 15; // max pixels to scroll per tick
+
+    let direction = 0; // -1 for up, 1 for down, 0 for none
+
+    if (relativeY < threshold) {
+      direction = -1;
+    } else if (rect.height - relativeY < threshold) {
+      direction = 1;
+    }
+
+    if (direction !== 0) {
+      const distance = direction === -1 ? relativeY : rect.height - relativeY;
+      const proximity = Math.max(0, threshold - distance);
+      const speed = Math.round((proximity / threshold) * maxSpeed) + 2; // minimum speed of 2px
+
+      if (scrollIntervalRef.current !== null) {
+        clearInterval(scrollIntervalRef.current);
+        scrollIntervalRef.current = null;
+      }
+
+      scrollIntervalRef.current = window.setInterval(() => {
+        if (container) {
+          container.scrollTop += direction * speed;
+        }
+      }, 16);
+    } else {
+      stopScrolling();
+    }
+  };
   // Group lessons by order
   const groupedByOrder = new Map<number, Lesson[]>();
   for (const lesson of lessons) {
@@ -77,9 +145,16 @@ export function MonthColumn({
       </div>
 
       <div
+        ref={listRef}
         className="month-column__list"
-        onDragOver={(e) => onDragOverGap(e, month, null)}
-        onDrop={(e) => onDropOnGap(e, month, null)}
+        onDragOver={handleDragOverList}
+        onDragLeave={stopScrolling}
+        onDrop={(e) => {
+          stopScrolling();
+          if (e.target === e.currentTarget) {
+            onDropOnGap(e, month, null);
+          }
+        }}
       >
         {sortedOrders.map((order) => {
           const rowLessons = groupedByOrder.get(order)!;
@@ -94,11 +169,9 @@ export function MonthColumn({
                   isGapActive ? "month-column__gap-dropzone--active" : ""
                 } ${draggingId ? "month-column__gap-dropzone--dragging" : ""}`}
                 onDragOver={(e) => {
-                  e.stopPropagation();
                   onDragOverGap(e, month, order);
                 }}
                 onDrop={(e) => {
-                  e.stopPropagation();
                   onDropOnGap(e, month, order);
                 }}
               />
@@ -109,11 +182,9 @@ export function MonthColumn({
                   isRowActive ? "month-column__order-row--active" : ""
                 }`}
                 onDragOver={(e) => {
-                  e.stopPropagation();
                   onDragOverRow(e, month, order);
                 }}
                 onDrop={(e) => {
-                  e.stopPropagation();
                   onDropOnRow(e, month, order);
                 }}
               >
@@ -126,11 +197,9 @@ export function MonthColumn({
                     onDragOver={(e) => {
                       // Row handles the dragover & drop events for the order group
                       e.preventDefault();
-                      e.stopPropagation();
                     }}
                     onDrop={(e) => {
                       e.preventDefault();
-                      e.stopPropagation();
                     }}
                     onDelete={onDeleteLesson}
                     onOpenNotifications={onOpenNotifications}
@@ -155,11 +224,9 @@ export function MonthColumn({
               dropTargetGap === `${month}-end` ? "month-column__gap-dropzone--active" : ""
             } ${draggingId ? "month-column__gap-dropzone--dragging" : ""}`}
             onDragOver={(e) => {
-              e.stopPropagation();
               onDragOverGap(e, month, null);
             }}
             onDrop={(e) => {
-              e.stopPropagation();
               onDropOnGap(e, month, null);
             }}
           />
