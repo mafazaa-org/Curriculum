@@ -4,7 +4,9 @@ import { MonthColumn } from "./components/MonthColumn";
 import { JsonImporter } from "./components/JsonImporter";
 import { JsonExporter } from "./components/JsonExporter";
 import { AddLessonModal } from "./components/AddLessonModal";
+import { AddPlaylistsModal } from "./components/AddPlaylistsModal";
 import { NotificationsModal } from "./components/NotificationsModal";
+import { EditLessonModal } from "./components/EditLessonModal";
 import "./KanbanBoard.css";
 
 // ─── Drag & Drop helpers ───────────────────────────────────────────────────
@@ -50,7 +52,9 @@ export default function KanbanBoard() {
     return saved ? Number(saved) : null;
   });
   const [showImporter, setShowImporter] = useState(false);
+  const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [activeNotificationsLesson, setActiveNotificationsLesson] = useState<Lesson | null>(null);
+  const [activeEditLesson, setActiveEditLesson] = useState<Lesson | null>(null);
 
   // drag state
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -179,6 +183,31 @@ export default function KanbanBoard() {
     });
   };
 
+  // ── Bulk add from playlists ────────────────────────────────────────────────
+  const handleAddPlaylists = (newLessons: Lesson[]) => {
+    if (newLessons.length === 0) return;
+
+    setLessons((prev) => {
+      const all = [...prev, ...newLessons];
+      const affectedMonths = Array.from(new Set(newLessons.map((l) => l.month)));
+
+      let updatedAll = all;
+      for (const m of affectedMonths) {
+        const col = updatedAll.filter((l) => l.month === m);
+        const normalizedCol = normalizeColumnOrders(col);
+        updatedAll = updatedAll.filter((l) => l.month !== m).concat(normalizedCol);
+      }
+      return updatedAll;
+    });
+
+    const newMonths = Array.from(new Set(newLessons.map((l) => l.month)));
+    setActiveMonths((prev) => {
+      const combined = Array.from(new Set([...prev, ...newMonths])).sort((a, b) => a - b);
+      return combined;
+    });
+  };
+
+
   // ── Add/Delete lesson ─────────────────────────────────────────────────────
   const handleAdd = (lesson: Lesson) => {
     setLastUsedMonth(lesson.month);
@@ -218,6 +247,29 @@ export default function KanbanBoard() {
     setLessons((prev) =>
       prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l))
     );
+  };
+
+  const handleEditLesson = (oldLesson: Lesson, updatedLesson: Lesson) => {
+    setLessons((prev) => {
+      const index = prev.findIndex((l) => l.id === updatedLesson.id);
+      if (index === -1) return prev;
+
+      let nextLessons = [...prev];
+      nextLessons[index] = updatedLesson;
+
+      if (oldLesson.month !== updatedLesson.month || oldLesson.order !== updatedLesson.order) {
+        const sourceCol = nextLessons.filter((l) => l.month === oldLesson.month);
+        const normalizedSource = normalizeColumnOrders(sourceCol);
+        nextLessons = nextLessons.filter((l) => l.month !== oldLesson.month).concat(normalizedSource);
+
+        if (oldLesson.month !== updatedLesson.month) {
+          const targetCol = nextLessons.filter((l) => l.month === updatedLesson.month);
+          const normalizedTarget = normalizeColumnOrders(targetCol);
+          nextLessons = nextLessons.filter((l) => l.month !== updatedLesson.month).concat(normalizedTarget);
+        }
+      }
+      return nextLessons;
+    });
   };
 
   // ── Drag & Drop ───────────────────────────────────────────────────────────
@@ -385,6 +437,12 @@ export default function KanbanBoard() {
             ➕ إضافة عمود شهر
           </button>
           <button
+            className="btn btn--secondary"
+            onClick={() => setShowPlaylistModal(true)}
+          >
+            📋 إضافة قوائم تشغيل
+          </button>
+          <button
             className="btn btn--ghost"
             onClick={() => setShowImporter((v) => !v)}
           >
@@ -457,6 +515,7 @@ export default function KanbanBoard() {
                 onDeleteLesson={handleDeleteLesson}
                 onDeleteColumn={handleDeleteMonth}
                 onOpenNotifications={setActiveNotificationsLesson}
+                onEdit={setActiveEditLesson}
               />
             );
           })}
@@ -474,6 +533,17 @@ export default function KanbanBoard() {
         />
       )}
 
+      {/* ── Add Playlists Modal ── */}
+      {showPlaylistModal && (
+        <AddPlaylistsModal
+          onAdd={handleAddPlaylists}
+          onClose={() => setShowPlaylistModal(false)}
+          defaultMonth={defaultMonth}
+          months={activeMonths}
+          existingLessons={lessons}
+        />
+      )}
+
       {/* ── Notifications Modal ── */}
       {activeNotificationsLesson && (
         <NotificationsModal
@@ -485,6 +555,15 @@ export default function KanbanBoard() {
               notification: newNotification,
             });
           }}
+        />
+      )}
+      {/* ── Edit Lesson Modal ── */}
+      {activeEditLesson && (
+        <EditLessonModal
+          lesson={activeEditLesson}
+          onClose={() => setActiveEditLesson(null)}
+          onSave={handleEditLesson}
+          months={activeMonths}
         />
       )}
     </div>

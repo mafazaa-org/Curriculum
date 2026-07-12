@@ -20,6 +20,7 @@ interface Props {
   onDeleteLesson: (id: string) => void;
   onDeleteColumn: (month: number) => void;
   onOpenNotifications: (lesson: Lesson) => void;
+  onEdit: (lesson: Lesson) => void;
 }
 
 export function MonthColumn({
@@ -36,6 +37,7 @@ export function MonthColumn({
   onDeleteLesson,
   onDeleteColumn,
   onOpenNotifications,
+  onEdit,
 }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const scrollIntervalRef = useRef<number | null>(null);
@@ -203,6 +205,7 @@ export function MonthColumn({
                     }}
                     onDelete={onDeleteLesson}
                     onOpenNotifications={onOpenNotifications}
+                    onEdit={onEdit}
                   />
                 ))}
 

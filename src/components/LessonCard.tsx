@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Lesson } from "../types";
 import { fetchVideoMeta } from "../utils/youtube";
-import { Bell } from "lucide-react";
+import { Bell, Edit } from "lucide-react";
 import "./LessonCard.css";
 
 interface Props {
@@ -12,6 +12,17 @@ interface Props {
   onDrop: (e: React.DragEvent) => void;
   onDelete: (id: string) => void;
   onOpenNotifications: (lesson: Lesson) => void;
+  onEdit: (lesson: Lesson) => void;
+}
+
+function formatTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 export function LessonCard({
@@ -22,6 +33,7 @@ export function LessonCard({
   onDrop,
   onDelete,
   onOpenNotifications,
+  onEdit,
 }: Props) {
   const [title, setTitle] = useState(lesson.title);
   const [thumbnail, setThumbnail] = useState(lesson.thumbnail_url);
@@ -91,6 +103,27 @@ export function LessonCard({
         <p className="lesson-card__title">
           {loading ? "جارٍ التحميل..." : title || "درس بدون عنوان"}
         </p>
+
+        {(lesson.partNumber !== undefined || lesson.partTitle) && (
+          <div className="lesson-card__part-info">
+            {lesson.partNumber !== undefined && (
+              <span className="lesson-card__part-number">الجزء {lesson.partNumber}</span>
+            )}
+            {lesson.partTitle && (
+              <span className="lesson-card__part-title">{lesson.partTitle}</span>
+            )}
+          </div>
+        )}
+
+        {(lesson.startSecond !== undefined || lesson.endSecond !== undefined) && (
+          <div className="lesson-card__time-range">
+            <span className="lesson-card__time-badge">
+              ⏱️ {lesson.startSecond !== undefined ? formatTime(lesson.startSecond) : "0:00"} -{" "}
+              {lesson.endSecond !== undefined ? formatTime(lesson.endSecond) : "نهاية الفيديو"}
+            </span>
+          </div>
+        )}
+
         <div className="lesson-card__footer-row">
           <a
             href={lesson.youtubeUrl}
@@ -101,24 +134,36 @@ export function LessonCard({
           >
             مشاهدة على يوتيوب ↗
           </a>
-          <button
-            type="button"
-            className={`lesson-card__notifications-btn ${
-              lesson.notification
-                ? "lesson-card__notifications-btn--active"
-                : ""
-            }`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenNotifications(lesson);
-            }}
-            title="إدارة الإشعار"
-          >
-            <Bell size={13} />
-            <span>
-              {lesson.notification ? "تعديل الإشعار" : "إضافة إشعار"}
-            </span>
-          </button>
+          <div className="lesson-card__actions-group" style={{ display: "flex", gap: "4px" }}>
+            <button
+              type="button"
+              className="lesson-card__edit-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(lesson);
+              }}
+              title="تعديل الدرس"
+            >
+              <Edit size={13} />
+              <span>تعديل</span>
+            </button>
+            <button
+              type="button"
+              className={`lesson-card__notifications-btn ${
+                lesson.notification
+                  ? "lesson-card__notifications-btn--active"
+                  : ""
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenNotifications(lesson);
+              }}
+              title="إدارة الإشعار"
+            >
+              <Bell size={13} />
+              <span>{lesson.notification ? "إشعار" : "+ إشعار"}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -20,6 +20,10 @@ export function AddLessonModal({ onAdd, onClose, defaultMonth, nextOrder, months
   const [url, setUrl] = useState("");
   const [month, setMonth] = useState(defaultMonth);
   const [notification, setNotification] = useState("");
+  const [partTitle, setPartTitle] = useState("");
+  const [partNumber, setPartNumber] = useState("");
+  const [startSecond, setStartSecond] = useState("");
+  const [endSecond, setEndSecond] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +32,32 @@ export function AddLessonModal({ onAdd, onClose, defaultMonth, nextOrder, months
     if (!url.trim()) return;
     setLoading(true);
     setError(null);
+
+    const parsedPartNumber = partNumber.trim() ? Number(partNumber) : undefined;
+    const parsedStartSecond = startSecond.trim() ? Number(startSecond) : undefined;
+    const parsedEndSecond = endSecond.trim() ? Number(endSecond) : undefined;
+
+    if (parsedPartNumber !== undefined && (isNaN(parsedPartNumber) || parsedPartNumber < 0)) {
+      setError("رقم الجزء يجب أن يكون رقمًا موجبًا.");
+      setLoading(false);
+      return;
+    }
+    if (parsedStartSecond !== undefined && (isNaN(parsedStartSecond) || parsedStartSecond < 0)) {
+      setError("وقت البدء يجب أن يكون رقمًا موجبًا.");
+      setLoading(false);
+      return;
+    }
+    if (parsedEndSecond !== undefined && (isNaN(parsedEndSecond) || parsedEndSecond < 0)) {
+      setError("وقت النهاية يجب أن يكون رقمًا موجبًا.");
+      setLoading(false);
+      return;
+    }
+    if (parsedStartSecond !== undefined && parsedEndSecond !== undefined && parsedStartSecond > parsedEndSecond) {
+      setError("وقت البدء لا يمكن أن يكون أكبر من وقت النهاية.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const meta = await fetchVideoMeta(url.trim());
 
@@ -39,6 +69,10 @@ export function AddLessonModal({ onAdd, onClose, defaultMonth, nextOrder, months
         title: meta.title,
         thumbnail_url: meta.thumbnail_url,
         ...(notification.trim() ? { notification: notification.trim() } : {}),
+        ...(partTitle.trim() ? { partTitle: partTitle.trim() } : {}),
+        ...(parsedPartNumber !== undefined ? { partNumber: parsedPartNumber } : {}),
+        ...(parsedStartSecond !== undefined ? { startSecond: parsedStartSecond } : {}),
+        ...(parsedEndSecond !== undefined ? { endSecond: parsedEndSecond } : {}),
       };
       onAdd(lesson);
       onClose();
@@ -87,6 +121,57 @@ export function AddLessonModal({ onAdd, onClose, defaultMonth, nextOrder, months
                 </option>
               ))}
             </select>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            <div className="add-modal__field">
+              <label className="add-modal__label">رقم الجزء (اختياري)</label>
+              <input
+                className="add-modal__input"
+                type="number"
+                placeholder="مثال: 1"
+                value={partNumber}
+                onChange={(e) => setPartNumber(e.target.value)}
+                min="0"
+              />
+            </div>
+
+            <div className="add-modal__field">
+              <label className="add-modal__label">عنوان الجزء (اختياري)</label>
+              <input
+                className="add-modal__input"
+                type="text"
+                placeholder="مثال: الجزء الأول"
+                value={partTitle}
+                onChange={(e) => setPartTitle(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            <div className="add-modal__field">
+              <label className="add-modal__label">البداية بالثواني (اختياري)</label>
+              <input
+                className="add-modal__input"
+                type="number"
+                placeholder="مثال: 0"
+                value={startSecond}
+                onChange={(e) => setStartSecond(e.target.value)}
+                min="0"
+              />
+            </div>
+
+            <div className="add-modal__field">
+              <label className="add-modal__label">النهاية بالثواني (اختياري)</label>
+              <input
+                className="add-modal__input"
+                type="number"
+                placeholder="مثال: 1200"
+                value={endSecond}
+                onChange={(e) => setEndSecond(e.target.value)}
+                min="0"
+              />
+            </div>
           </div>
 
           <div className="add-modal__field">

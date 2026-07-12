@@ -1,0 +1,143 @@
+.edit-modal__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+  animation: fade-in 0.15s ease;
+}
+
+.edit-modal {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 560px;
+  animation: slide-up 0.2s ease;
+  overflow: hidden;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.edit-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.edit-modal__header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.edit-modal__close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.edit-modal__close:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.edit-modal__form {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.edit-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.edit-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.edit-modal__field--full {
+  grid-column: span 2;
+}
+
+.edit-modal__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.edit-modal__input,
+.edit-modal__select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.edit-modal__input:focus,
+.edit-modal__select:focus {
+  border-color: var(--accent);
+}
+
+.edit-modal__select option {
+  background: var(--surface-2);
+}
+
+.edit-modal__url-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-modal__fetch-btn {
+  flex-shrink: 0;
+}
+
+.edit-modal__error {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #f87171;
+}
+
+.edit-modal__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: 8px;
+}
+
+@keyframes fade-in {
+  from { opacity: 0 }
+  to   { opacity: 1 }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0 }
+  to   { transform: translateY(0);    opacity: 1 }
+}
