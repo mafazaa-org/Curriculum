@@ -29,9 +29,24 @@ export function getYouTubeVideoId(url: string): string | null {
 export interface VideoMeta {
   title: string;
   thumbnail_url: string;
+  durationSeconds?: number;
 }
 
 const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY as string;
+
+/** Parse ISO 8601 duration string into seconds */
+export function parseISO8601Duration(duration: string): number {
+  const match = duration.match(/P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) {
+    return 0;
+  }
+  const days = Number(match[1] || 0);
+  const hours = Number(match[2] || 0);
+  const minutes = Number(match[3] || 0);
+  const seconds = Number(match[4] || 0);
+  const result = days * 86400 + hours * 3600 + minutes * 60 + seconds;
+  return result;
+}
 
 /** Fetch video title and thumbnail via YouTube Data API v3 */
 export async function fetchVideoMeta(youtubeUrl: string): Promise<VideoMeta> {
@@ -42,7 +57,7 @@ export async function fetchVideoMeta(youtubeUrl: string): Promise<VideoMeta> {
 
   const apiUrl =
     `https://www.googleapis.com/youtube/v3/videos` +
-    `?part=snippet&id=${encodeURIComponent(videoId)}&key=${encodeURIComponent(API_KEY)}`;
+    `?part=snippet,contentDetails&id=${encodeURIComponent(videoId)}&key=${encodeURIComponent(API_KEY)}`;
 
   const res = await fetch(apiUrl);
   if (!res.ok) throw new Error(`YouTube API request failed: ${res.status}`);
@@ -52,15 +67,21 @@ export async function fetchVideoMeta(youtubeUrl: string): Promise<VideoMeta> {
   if (!item) throw new Error(`Video not found: ${videoId}`);
 
   const snippet = item.snippet;
+  const contentDetails = item.contentDetails;
   const thumbnail =
     snippet.thumbnails?.high?.url ??
     snippet.thumbnails?.medium?.url ??
     snippet.thumbnails?.default?.url ??
     `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 
+  const durationSeconds = contentDetails?.duration
+    ? parseISO8601Duration(contentDetails.duration)
+    : undefined;
+
   return {
     title: snippet.title ?? "Untitled",
     thumbnail_url: thumbnail,
+    durationSeconds,
   };
 }
 
@@ -95,6 +116,11 @@ export interface PlaylistItem {
   youtubeUrl: string;
   title: string;
   thumbnail_url: string;
+  durationSeconds?: number;
+  partNumber?: number;
+  partTitle?: string;
+  startSecond?: number;
+  endSecond?: number;
 }
 
 /** Fetch all videos from a YouTube playlist via Data API v3 */
@@ -122,7 +148,41 @@ export async function fetchPlaylistItems(playlistUrl: string): Promise<PlaylistI
 
     const data = await res.json();
 
-    for (const item of data.items ?? []) {
+    // Collect all video IDs in this batch to fetch their durations in one call
+    const batchItems = data.items ?? [];
+    const videoIds: string[] = [];
+    for (const item of batchItems) {
+      const snippet = item.snippet;
+      if (snippet) {
+        // Skip deleted/private videos here so we don't query their durations
+        if (snippet.title === "Deleted video" || snippet.title === "Private video") continue;
+        const videoId = snippet.resourceId?.videoId;
+        if (videoId) videoIds.push(videoId);
+      }
+    }
+
+    const durationMap: Record<string, number> = {};
+    if (videoIds.length > 0) {
+      const videosUrl =
+        `https://www.googleapis.com/youtube/v3/videos` +
+        `?part=contentDetails` +
+        `&id=${videoIds.map(encodeURIComponent).join(",")}` +
+        `&key=${encodeURIComponent(API_KEY)}`;
+      const videosRes = await fetch(videosUrl);
+      if (!videosRes.ok) {
+        const errText = await videosRes.text();
+        throw new Error(`YouTube API videos request failed: ${videosRes.status} - ${errText}`);
+      }
+      const videosData = await videosRes.json();
+      for (const vItem of videosData.items ?? []) {
+        if (vItem.id && vItem.contentDetails?.duration) {
+          const parsed = parseISO8601Duration(vItem.contentDetails.duration);
+          durationMap[vItem.id] = parsed;
+        }
+      }
+    }
+
+    for (const item of batchItems) {
       const snippet = item.snippet;
       // Skip deleted/private videos
       if (snippet.title === "Deleted video" || snippet.title === "Private video") continue;
@@ -136,10 +196,13 @@ export async function fetchPlaylistItems(playlistUrl: string): Promise<PlaylistI
         snippet.thumbnails?.default?.url ??
         `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 
+      const durationSeconds = durationMap[videoId];
+
       items.push({
         youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
         title: snippet.title ?? "Untitled",
         thumbnail_url: thumbnail,
+        durationSeconds,
       });
     }
 
@@ -198,4 +261,46 @@ export function interleaveSlots<T>(
   }
 
   return result;
+}
+
+export interface SplitPart {
+  partNumber: number;
+  partTitle: string;
+  startSecond: number;
+  endSecond: number;
+}
+
+/**
+ * Checks if a lesson range (or video duration) is 80 minutes (4800 seconds) or more.
+ * If so, returns two split ranges (Part 1 and Part 2) with exactly halved durations.
+ * Otherwise, returns null.
+ */
+export function getSplitParts(input: {
+  startSecond?: number;
+  endSecond?: number;
+  durationSeconds?: number;
+}): SplitPart[] | null {
+  const start = input.startSecond ?? 0;
+  const end = input.endSecond ?? (input.durationSeconds ?? 0);
+  const duration = end - start;
+
+  if (duration >= 80 * 60) {
+    const mid = start + Math.floor(duration / 2);
+    return [
+      {
+        partNumber: 1,
+        partTitle: "الجزء الأول",
+        startSecond: start,
+        endSecond: mid,
+      },
+      {
+        partNumber: 2,
+        partTitle: "الجزء الثاني",
+        startSecond: mid,
+        endSecond: end,
+      },
+    ];
+  }
+
+  return null;
 }

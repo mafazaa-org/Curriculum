@@ -209,20 +209,28 @@ export default function KanbanBoard() {
 
 
   // ── Add/Delete lesson ─────────────────────────────────────────────────────
-  const handleAdd = (lesson: Lesson) => {
-    setLastUsedMonth(lesson.month);
-    localStorage.setItem("curriculum_last_used_month", String(lesson.month));
+  const handleAdd = (lessonOrLessons: Lesson | Lesson[]) => {
+    const newLessons = Array.isArray(lessonOrLessons) ? lessonOrLessons : [lessonOrLessons];
+    if (newLessons.length === 0) return;
+
+    setLastUsedMonth(newLessons[0].month);
+    localStorage.setItem("curriculum_last_used_month", String(newLessons[0].month));
+    
     setLessons((prev) => {
-      const targetMonthLessons = prev.filter((l) => l.month === lesson.month);
-      const maxOrder =
-        targetMonthLessons.length > 0
-          ? Math.max(...targetMonthLessons.map((l) => l.order))
-          : 0;
-      const correctedLesson = {
-        ...lesson,
-        order: maxOrder + 1,
-      };
-      return [...prev, correctedLesson];
+      let currentLessons = [...prev];
+      for (const newL of newLessons) {
+        const targetMonthLessons = currentLessons.filter((l) => l.month === newL.month);
+        const maxOrder =
+          targetMonthLessons.length > 0
+            ? Math.max(...targetMonthLessons.map((l) => l.order))
+            : 0;
+        const correctedLesson = {
+          ...newL,
+          order: maxOrder + 1,
+        };
+        currentLessons.push(correctedLesson);
+      }
+      return currentLessons;
     });
   };
 

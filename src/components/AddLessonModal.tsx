@@ -1,11 +1,11 @@
 import { useState } from "react";
 import type { Lesson } from "../types";
-import { fetchVideoMeta } from "../utils/youtube";
+import { fetchVideoMeta, getSplitParts } from "../utils/youtube";
 import { getArabicOrdinal } from "../utils/arabic";
 import "./AddLessonModal.css";
 
 interface Props {
-  onAdd: (lesson: Lesson) => void;
+  onAdd: (lesson: Lesson | Lesson[]) => void;
   onClose: () => void;
   defaultMonth: number;
   nextOrder: number;
@@ -61,20 +61,59 @@ export function AddLessonModal({ onAdd, onClose, defaultMonth, nextOrder, months
     try {
       const meta = await fetchVideoMeta(url.trim());
 
-      const lesson: Lesson = {
-        id: generateId(),
-        youtubeUrl: url.trim(),
-        order: nextOrder,
-        month,
-        title: meta.title,
-        thumbnail_url: meta.thumbnail_url,
-        ...(notification.trim() ? { notification: notification.trim() } : {}),
-        ...(partTitle.trim() ? { partTitle: partTitle.trim() } : {}),
-        ...(parsedPartNumber !== undefined ? { partNumber: parsedPartNumber } : {}),
-        ...(parsedStartSecond !== undefined ? { startSecond: parsedStartSecond } : {}),
-        ...(parsedEndSecond !== undefined ? { endSecond: parsedEndSecond } : {}),
-      };
-      onAdd(lesson);
+      const parts = getSplitParts({
+        startSecond: parsedStartSecond,
+        endSecond: parsedEndSecond,
+        durationSeconds: meta.durationSeconds,
+      });
+
+      if (parts && parts.length >= 2) {
+        const [part1, part2] = parts;
+        const lesson1: Lesson = {
+          id: generateId(),
+          youtubeUrl: url.trim(),
+          order: nextOrder,
+          month,
+          title: meta.title,
+          thumbnail_url: meta.thumbnail_url,
+          partNumber: part1.partNumber,
+          partTitle: part1.partTitle,
+          startSecond: part1.startSecond,
+          endSecond: part1.endSecond,
+          ...(notification.trim() ? { notification: notification.trim() } : {}),
+        };
+
+        const lesson2: Lesson = {
+          id: generateId(),
+          youtubeUrl: url.trim(),
+          order: nextOrder + 1,
+          month,
+          title: meta.title,
+          thumbnail_url: meta.thumbnail_url,
+          partNumber: part2.partNumber,
+          partTitle: part2.partTitle,
+          startSecond: part2.startSecond,
+          endSecond: part2.endSecond,
+          ...(notification.trim() ? { notification: notification.trim() } : {}),
+        };
+
+        onAdd([lesson1, lesson2]);
+      } else {
+        const lesson: Lesson = {
+          id: generateId(),
+          youtubeUrl: url.trim(),
+          order: nextOrder,
+          month,
+          title: meta.title,
+          thumbnail_url: meta.thumbnail_url,
+          ...(notification.trim() ? { notification: notification.trim() } : {}),
+          ...(partTitle.trim() ? { partTitle: partTitle.trim() } : {}),
+          ...(parsedPartNumber !== undefined ? { partNumber: parsedPartNumber } : {}),
+          ...(parsedStartSecond !== undefined ? { startSecond: parsedStartSecond } : {}),
+          ...(parsedEndSecond !== undefined ? { endSecond: parsedEndSecond } : {}),
+        };
+        onAdd(lesson);
+      }
       onClose();
     } catch {
       setError("تعذّر جلب بيانات الفيديو. تحقق من الرابط.");

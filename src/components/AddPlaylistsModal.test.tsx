@@ -190,5 +190,110 @@ describe("AddPlaylistsModal", () => {
     // Vid B1 should go to Month 2 (order 1)
     expect(added[1]).toMatchObject({ title: "Vid B1", month: 2, order: 1 });
   });
+
+  test("splits playlist items >= 120 minutes into two lessons on confirm", async () => {
+    const fetchMock = vi.mocked(youtubeUtils.fetchPlaylistItems);
+    fetchMock.mockResolvedValueOnce([
+      { youtubeUrl: "urlA1", title: "Vid Long", thumbnail_url: "thumb", durationSeconds: 7200 },
+      { youtubeUrl: "urlA2", title: "Vid Short", thumbnail_url: "thumb", durationSeconds: 1800 },
+    ]);
+
+    const onAddMock = vi.fn();
+    render(
+      <AddPlaylistsModal
+        {...defaultProps}
+        months={[1]}
+        onAdd={onAddMock}
+        existingLessons={[]}
+      />
+    );
+
+    const inputs = screen.getAllByPlaceholderText("https://youtube.com/playlist?list=...");
+    fireEvent.change(inputs[0], { target: { value: "https://www.youtube.com/playlist?list=PLA" } });
+    fireEvent.click(screen.getByText("التالي ←"));
+
+    await waitFor(() => {
+      expect(screen.getByText("ترتيب قوائم التشغيل")).toBeInTheDocument();
+    });
+
+    const confirmBtn = screen.getByText("إضافة 3 درس");
+    fireEvent.click(confirmBtn);
+
+    expect(onAddMock).toHaveBeenCalledTimes(1);
+    const addedLessons = onAddMock.mock.calls[0][0];
+    expect(addedLessons).toHaveLength(3);
+
+    expect(addedLessons[0]).toMatchObject({
+      title: "Vid Long",
+      partNumber: 1,
+      partTitle: "الجزء الأول",
+      startSecond: 0,
+      endSecond: 3600,
+      month: 1,
+      order: 1,
+    });
+
+    expect(addedLessons[1]).toMatchObject({
+      title: "Vid Long",
+      partNumber: 2,
+      partTitle: "الجزء الثاني",
+      startSecond: 3600,
+      endSecond: 7200,
+      month: 1,
+      order: 2,
+    });
+
+    expect(addedLessons[2]).toMatchObject({
+      title: "Vid Short",
+      month: 1,
+      order: 3,
+    });
+    expect(addedLessons[2].partNumber).toBeUndefined();
+  });
+
+  test("places split video parts in successive iterations of the round-robin slot interleaving", async () => {
+    const fetchMock = vi.mocked(youtubeUtils.fetchPlaylistItems);
+    // Playlist A has a long video and a short video
+    fetchMock.mockResolvedValueOnce([
+      { youtubeUrl: "urlA1", title: "Vid Long", thumbnail_url: "thumb", durationSeconds: 7200 },
+      { youtubeUrl: "urlA2", title: "Vid A2", thumbnail_url: "thumb", durationSeconds: 1800 },
+    ]);
+    // Playlist B has short videos
+    fetchMock.mockResolvedValueOnce([
+      { youtubeUrl: "urlB1", title: "Vid B1", thumbnail_url: "thumb", durationSeconds: 1800 },
+      { youtubeUrl: "urlB2", title: "Vid B2", thumbnail_url: "thumb", durationSeconds: 1800 },
+    ]);
+
+    const onAddMock = vi.fn();
+    render(
+      <AddPlaylistsModal
+        {...defaultProps}
+        months={[1, 2]}
+        onAdd={onAddMock}
+        existingLessons={[]}
+      />
+    );
+
+    const inputs = screen.getAllByPlaceholderText("https://youtube.com/playlist?list=...");
+    fireEvent.change(inputs[0], { target: { value: "https://www.youtube.com/playlist?list=PLA" } });
+    fireEvent.change(inputs[1], { target: { value: "https://www.youtube.com/playlist?list=PLB" } });
+    fireEvent.click(screen.getByText("التالي ←"));
+
+    await waitFor(() => {
+      expect(screen.getByText("ترتيب قوائم التشغيل")).toBeInTheDocument();
+    });
+
+    const confirmBtn = screen.getByText("إضافة 4 درس");
+    fireEvent.click(confirmBtn);
+
+    expect(onAddMock).toHaveBeenCalledTimes(1);
+    const addedLessons = onAddMock.mock.calls[0][0];
+    expect(addedLessons).toHaveLength(4);
+
+    expect(addedLessons[0]).toMatchObject({ title: "Vid Long", partNumber: 1, order: 1 });
+    expect(addedLessons[1]).toMatchObject({ title: "Vid B1", order: 2 });
+    expect(addedLessons[2]).toMatchObject({ title: "Vid Long", partNumber: 2, order: 3 });
+    expect(addedLessons[3]).toMatchObject({ title: "Vid B2", order: 4 });
+  });
 });
 

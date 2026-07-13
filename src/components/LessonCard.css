@@ -158,13 +158,12 @@
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  font-size: 0.7rem;
-  font-family: 'Cairo', sans-serif;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
   border-radius: 6px;
   transition: background 0.15s, color 0.15s;
 }
@@ -188,13 +187,12 @@
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  font-size: 0.7rem;
-  font-family: 'Cairo', sans-serif;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
   border-radius: 6px;
   transition: background 0.15s, color 0.15s;
 }

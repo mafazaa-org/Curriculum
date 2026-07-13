@@ -3,6 +3,8 @@ import {
   getYouTubePlaylistId,
   buildSlotStream,
   interleaveSlots,
+  parseISO8601Duration,
+  getSplitParts,
 } from "./youtube";
 import type { SlotConfig } from "./youtube";
 
@@ -107,6 +109,63 @@ describe("youtube utilities", () => {
 
       const result = interleaveSlots(playlists, slots);
       expect(result).toEqual(["A1", "B1", "A2", "B2", "A3", "B3", "A4", "C1"]);
+    });
+  });
+
+  describe("parseISO8601Duration", () => {
+    test("should parse standard ISO 8601 duration formats", () => {
+      expect(parseISO8601Duration("PT1H2M10S")).toBe(3730);
+      expect(parseISO8601Duration("PT2H30M")).toBe(9000);
+      expect(parseISO8601Duration("PT45S")).toBe(45);
+      expect(parseISO8601Duration("PT123M20S")).toBe(7400);
+      expect(parseISO8601Duration("PT2H")).toBe(7200);
+      expect(parseISO8601Duration("P1DT2H3M4S")).toBe(93784);
+    });
+
+    test("should handle invalid inputs gracefully", () => {
+      expect(parseISO8601Duration("")).toBe(0);
+      expect(parseISO8601Duration("invalid")).toBe(0);
+    });
+  });
+
+  describe("getSplitParts", () => {
+    test("should return null if duration is under 80 minutes", () => {
+      expect(getSplitParts({ durationSeconds: 4799 })).toBeNull();
+      expect(getSplitParts({ startSecond: 10, endSecond: 4800 })).toBeNull();
+    });
+
+    test("should split into two parts if duration is 80 minutes or more", () => {
+      const parts = getSplitParts({ durationSeconds: 4800 });
+      expect(parts).toHaveLength(2);
+      expect(parts![0]).toEqual({
+        partNumber: 1,
+        partTitle: "الجزء الأول",
+        startSecond: 0,
+        endSecond: 2400,
+      });
+      expect(parts![1]).toEqual({
+        partNumber: 2,
+        partTitle: "الجزء الثاني",
+        startSecond: 2400,
+        endSecond: 4800,
+      });
+    });
+
+    test("should handle custom start and end bounds correctly", () => {
+      const parts = getSplitParts({ startSecond: 1000, endSecond: 6000 });
+      expect(parts).toHaveLength(2);
+      expect(parts![0]).toEqual({
+        partNumber: 1,
+        partTitle: "الجزء الأول",
+        startSecond: 1000,
+        endSecond: 3500,
+      });
+      expect(parts![1]).toEqual({
+        partNumber: 2,
+        partTitle: "الجزء الثاني",
+        startSecond: 3500,
+        endSecond: 6000,
+      });
     });
   });
 });

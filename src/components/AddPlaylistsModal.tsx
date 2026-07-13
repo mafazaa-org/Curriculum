@@ -4,6 +4,7 @@ import {
   fetchPlaylistItems,
   interleaveSlots,
   getYouTubePlaylistId,
+  getSplitParts,
 } from "../utils/youtube";
 import type { PlaylistItem, SlotConfig } from "../utils/youtube";
 import { getArabicOrdinal } from "../utils/arabic";
@@ -41,6 +42,35 @@ interface Slot {
 }
 
 type Step = "urls" | "order";
+
+const splitPlaylistItems = (items: PlaylistItem[]): PlaylistItem[] => {
+  const result: PlaylistItem[] = [];
+  for (const item of items) {
+    const parts = getSplitParts({ durationSeconds: item.durationSeconds });
+    if (parts && parts.length >= 2) {
+      const [part1, part2] = parts;
+      result.push({
+        ...item,
+        partNumber: part1.partNumber,
+        partTitle: part1.partTitle,
+        startSecond: part1.startSecond,
+        endSecond: part1.endSecond,
+        durationSeconds: part1.endSecond - part1.startSecond,
+      });
+      result.push({
+        ...item,
+        partNumber: part2.partNumber,
+        partTitle: part2.partTitle,
+        startSecond: part2.startSecond,
+        endSecond: part2.endSecond,
+        durationSeconds: part2.endSecond - part2.startSecond,
+      });
+    } else {
+      result.push(item);
+    }
+  }
+  return result;
+};
 
 function generateId(): string {
   return crypto.randomUUID();
@@ -121,7 +151,7 @@ export function AddPlaylistsModal({
         results.push({
           url: row.url.trim(),
           title: `قائمة ${results.length + 1} (${items.length} فيديو)`,
-          items,
+          items: splitPlaylistItems(items),
         });
       }
 
@@ -311,7 +341,6 @@ export function AddPlaylistsModal({
       while (getMonthUniqueOrders(currentMonth) >= MAX_CARDS) {
         currentMonth += 1;
       }
-
       const order = getNextOrder(currentMonth);
       lessonsList.push({
         id: generateId(),
@@ -320,8 +349,11 @@ export function AddPlaylistsModal({
         thumbnail_url: item.thumbnail_url,
         month: currentMonth,
         order,
+        ...(item.partNumber !== undefined ? { partNumber: item.partNumber } : {}),
+        ...(item.partTitle ? { partTitle: item.partTitle } : {}),
+        ...(item.startSecond !== undefined ? { startSecond: item.startSecond } : {}),
+        ...(item.endSecond !== undefined ? { endSecond: item.endSecond } : {}),
       });
-
       monthUniqueOrders.set(currentMonth, getMonthUniqueOrders(currentMonth) + 1);
     }
     return lessonsList;
@@ -602,6 +634,7 @@ export function AddPlaylistsModal({
                         [الشهر {getArabicOrdinal(item.month)}]
                       </span>{" "}
                       {item.title}
+                      {item.partTitle && ` (${item.partTitle})`}
                     </li>
                   ))}
                   {totalLessons > 12 && (
