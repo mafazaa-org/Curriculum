@@ -9,16 +9,16 @@ export function getYouTubeVideoId(url: string): string | null {
     }
 
     // youtube.com/watch?v=VIDEO_ID
-    if (
-      parsed.hostname === "www.youtube.com" ||
-      parsed.hostname === "youtube.com"
-    ) {
+    const hostnames = ["www.youtube.com", "youtube.com", "m.youtube.com"];
+    if (hostnames.includes(parsed.hostname)) {
       const v = parsed.searchParams.get("v");
       if (v) return v;
 
-      // youtube.com/embed/VIDEO_ID or youtube.com/shorts/VIDEO_ID
+      // youtube.com/embed/VIDEO_ID or youtube.com/shorts/VIDEO_ID or youtube.com/live/VIDEO_ID
       const parts = parsed.pathname.split("/").filter(Boolean);
-      if (parts[0] === "embed" || parts[0] === "shorts") return parts[1] ?? null;
+      if (parts[0] === "embed" || parts[0] === "shorts" || parts[0] === "live") {
+        return parts[1] ?? null;
+      }
     }
   } catch {
     // invalid URL

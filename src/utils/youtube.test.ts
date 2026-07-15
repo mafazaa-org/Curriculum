@@ -1,5 +1,6 @@
 import { describe, test, expect } from "vitest";
 import {
+  getYouTubeVideoId,
   getYouTubePlaylistId,
   buildSlotStream,
   interleaveSlots,
@@ -9,6 +10,29 @@ import {
 import type { SlotConfig } from "./youtube";
 
 describe("youtube utilities", () => {
+  describe("getYouTubeVideoId", () => {
+    test("should extract video id from standard watch urls", () => {
+      expect(getYouTubeVideoId("https://www.youtube.com/watch?v=kakK0v4oPC0")).toBe("kakK0v4oPC0");
+      expect(getYouTubeVideoId("https://youtube.com/watch?v=kakK0v4oPC0")).toBe("kakK0v4oPC0");
+    });
+
+    test("should extract video id from mobile and short urls", () => {
+      expect(getYouTubeVideoId("https://m.youtube.com/watch?v=kakK0v4oPC0")).toBe("kakK0v4oPC0");
+      expect(getYouTubeVideoId("https://youtu.be/kakK0v4oPC0")).toBe("kakK0v4oPC0");
+    });
+
+    test("should extract video id from shorts, embed, and live urls", () => {
+      expect(getYouTubeVideoId("https://www.youtube.com/shorts/kakK0v4oPC0")).toBe("kakK0v4oPC0");
+      expect(getYouTubeVideoId("https://www.youtube.com/embed/kakK0v4oPC0")).toBe("kakK0v4oPC0");
+      expect(getYouTubeVideoId("https://www.youtube.com/live/kakK0v4oPC0?si=hpotvLO8xrBEBYKP")).toBe("kakK0v4oPC0");
+    });
+
+    test("should return null for invalid urls", () => {
+      expect(getYouTubeVideoId("https://example.com/watch?v=kakK0v4oPC0")).toBeNull();
+      expect(getYouTubeVideoId("invalid-url")).toBeNull();
+    });
+  });
+
   describe("getYouTubePlaylistId", () => {
     test("should extract list parameter from youtube.com urls", () => {
       const url = "https://www.youtube.com/playlist?list=PL6n9fhu94yhXjG1w2klgqr2R9yH9gIX1I";
