@@ -29,6 +29,104 @@ function normalizeColumnOrders(columnLessons: Lesson[]): Lesson[] {
   });
 }
 
+/**
+ * Balance lessons across active columns to ensure each column has at most 20 cards (merged rows count as one card).
+ * Cascades excess lessons forward and pulls lessons forward if earlier columns are under capacity.
+ */
+function balanceLessons(lessons: Lesson[], activeMonths: number[]): Lesson[] {
+  if (activeMonths.length === 0) return lessons;
+
+  const maxCards = 20;
+  const activeMonthsSet = new Set(activeMonths);
+  const lessonsInActive = lessons.filter((l) => activeMonthsSet.has(l.month));
+  const lessonsOutside = lessons.filter((l) => !activeMonthsSet.has(l.month));
+
+  const getMonthIndex = (m: number) => activeMonths.indexOf(m);
+
+  // 1. Group active lessons by (month, order)
+  const groupMap = new Map<string, Lesson[]>();
+  for (const l of lessonsInActive) {
+    const key = `${l.month}-${l.order}`;
+    const list = groupMap.get(key) ?? [];
+    list.push(l);
+    groupMap.set(key, list);
+  }
+
+  // 2. Convert groups to an array and sort them by current display position
+  interface LessonGroup {
+    month: number;
+    order: number;
+    lessons: Lesson[];
+    origMinIndex: number;
+  }
+
+  const groups: LessonGroup[] = Array.from(groupMap.values()).map((list) => {
+    // Find min index in the original lessons array for stable sorting
+    const indices = list.map((l) => lessons.indexOf(l));
+    const origMinIndex = Math.min(...indices);
+    return {
+      month: list[0].month,
+      order: list[0].order,
+      lessons: list,
+      origMinIndex,
+    };
+  });
+
+  // Sort groups by:
+  // - Month index in activeMonths
+  // - Order index ascending
+  // - origMinIndex ascending (stable sorting)
+  groups.sort((a, b) => {
+    const aMonthIdx = getMonthIndex(a.month);
+    const bMonthIdx = getMonthIndex(b.month);
+    if (aMonthIdx !== bMonthIdx) return aMonthIdx - bMonthIdx;
+    if (a.order !== b.order) return a.order - b.order;
+    return a.origMinIndex - b.origMinIndex;
+  });
+
+  // 3. Distribute groups across active columns (up to maxCards per month)
+  const balanced: Lesson[] = [];
+  let groupIdx = 0;
+
+  for (let mIdx = 0; mIdx < activeMonths.length; mIdx++) {
+    const month = activeMonths[mIdx];
+    let currentOrder = 1;
+
+    for (let count = 0; count < maxCards && groupIdx < groups.length; count++) {
+      const group = groups[groupIdx];
+      // Assign the new month and consecutive order to all lessons in this group
+      for (const l of group.lessons) {
+        balanced.push({
+          ...l,
+          month,
+          order: currentOrder,
+        });
+      }
+      currentOrder++;
+      groupIdx++;
+    }
+  }
+
+  // 4. If there are overflow groups left, append them to the last active month
+  const lastMonth = activeMonths[activeMonths.length - 1];
+  let lastMonthMaxOrder = balanced.filter(l => l.month === lastMonth).reduce((max, l) => Math.max(max, l.order), 0);
+
+  while (groupIdx < groups.length) {
+    const group = groups[groupIdx];
+    lastMonthMaxOrder++;
+    for (const l of group.lessons) {
+      balanced.push({
+        ...l,
+        month: lastMonth,
+        order: lastMonthMaxOrder,
+      });
+    }
+    groupIdx++;
+  }
+
+  return [...lessonsOutside, ...balanced];
+}
+
 // ─── Component ────────────────────────────────────────────────────────────
 
 export default function KanbanBoard() {
@@ -195,7 +293,13 @@ export default function KanbanBoard() {
       if (!confirmDelete) return;
     }
 
-    setLessons((prev) => prev.filter((l) => l.month !== month));
+    const nextMonths = activeMonths.filter((m) => m !== month);
+    const targetMonths = nextMonths.length > 0 ? nextMonths : [1];
+
+    setLessons((prev) => {
+      const filteredLessons = prev.filter((l) => l.month !== month);
+      return balanceLessons(filteredLessons, targetMonths);
+    });
     setActiveMonths((prev) => {
       const filtered = prev.filter((m) => m !== month);
       return filtered.length > 0 ? filtered : [1];
@@ -205,6 +309,9 @@ export default function KanbanBoard() {
   // ── Bulk add from playlists ────────────────────────────────────────────────
   const handleAddPlaylists = (newLessons: Lesson[]) => {
     if (newLessons.length === 0) return;
+
+    const newMonths = Array.from(new Set(newLessons.map((l) => l.month)));
+    const combinedMonths = Array.from(new Set([...activeMonths, ...newMonths])).sort((a, b) => a - b);
 
     setLessons((prev) => {
       const all = [...prev, ...newLessons];
@@ -216,14 +323,10 @@ export default function KanbanBoard() {
         const normalizedCol = normalizeColumnOrders(col);
         updatedAll = updatedAll.filter((l) => l.month !== m).concat(normalizedCol);
       }
-      return updatedAll;
+      return balanceLessons(updatedAll, combinedMonths);
     });
 
-    const newMonths = Array.from(new Set(newLessons.map((l) => l.month)));
-    setActiveMonths((prev) => {
-      const combined = Array.from(new Set([...prev, ...newMonths])).sort((a, b) => a - b);
-      return combined;
-    });
+    setActiveMonths(combinedMonths);
   };
 
 
@@ -249,7 +352,7 @@ export default function KanbanBoard() {
         };
         currentLessons.push(correctedLesson);
       }
-      return currentLessons;
+      return balanceLessons(currentLessons, activeMonths);
     });
   };
 
@@ -266,7 +369,8 @@ export default function KanbanBoard() {
       const col = remaining.filter((l) => l.month === month);
       const normalizedTarget = normalizeColumnOrders(col);
 
-      return remaining.filter((l) => l.month !== month).concat(normalizedTarget);
+      const targetList = remaining.filter((l) => l.month !== month).concat(normalizedTarget);
+      return balanceLessons(targetList, activeMonths);
     });
   };
 
@@ -295,7 +399,7 @@ export default function KanbanBoard() {
           nextLessons = nextLessons.filter((l) => l.month !== updatedLesson.month).concat(normalizedTarget);
         }
       }
-      return nextLessons;
+      return balanceLessons(nextLessons, activeMonths);
     });
   };
 
@@ -364,7 +468,7 @@ export default function KanbanBoard() {
         updatedOthers = updatedOthers.filter((l) => l.month !== srcMonth).concat(normalizedCol);
       }
 
-      return updatedOthers.concat(normalizedTarget);
+      return balanceLessons(updatedOthers.concat(normalizedTarget), activeMonths);
     });
 
     reset();
@@ -465,7 +569,7 @@ export default function KanbanBoard() {
         updatedOthers = updatedOthers.filter((l) => l.month !== srcMonth).concat(normalizedCol);
       }
 
-      return updatedOthers.concat(normalizedTarget);
+      return balanceLessons(updatedOthers.concat(normalizedTarget), activeMonths);
     });
 
     reset();

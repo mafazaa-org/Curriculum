@@ -22,6 +22,7 @@ export function getYouTubeVideoId(url: string): string | null {
     }
   } catch {
     // invalid URL
+    
   }
   return null;
 }
