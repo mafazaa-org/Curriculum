@@ -61,6 +61,25 @@ export default function KanbanBoard() {
   const [dropTargetRow, setDropTargetRow] = useState<string | null>(null);
   const [dropTargetGap, setDropTargetGap] = useState<string | null>(null);
 
+  // selection state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const handleSelectLesson = (id: string, isMulti: boolean) => {
+    if (isMulti) {
+      setSelectedIds((prev) =>
+        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      );
+    } else {
+      setSelectedIds([id]);
+    }
+  };
+
+  const handleBoardClick = (e: React.MouseEvent) => {
+    if (!(e.target as HTMLElement).closest(".lesson-card")) {
+      setSelectedIds([]);
+    }
+  };
+
   // Load initial data if not initialized
   useEffect(() => {
     const initialized = localStorage.getItem("curriculum_initialized") === "true";
@@ -283,6 +302,13 @@ export default function KanbanBoard() {
   // ── Drag & Drop ───────────────────────────────────────────────────────────
   const handleDragStart = (id: string) => {
     setDraggingId(id);
+    setSelectedIds((prev) => {
+      if (prev.includes(id)) {
+        return prev;
+      } else {
+        return [id];
+      }
+    });
   };
 
   const handleDragOverRow = (e: React.DragEvent, month: number, order: number) => {
@@ -303,47 +329,44 @@ export default function KanbanBoard() {
 
   const handleDropOnRow = (e: React.DragEvent, targetMonth: number, targetOrder: number) => {
     e.preventDefault();
-    const sourceId = draggingId;
-    if (!sourceId) {
-      reset();
-      return;
-    }
-
-    const sourceLesson = lessons.find((l) => l.id === sourceId);
-    if (!sourceLesson) {
-      reset();
-      return;
-    }
-
-    // Don't join same order in the same month if it already belongs to it
-    if (sourceLesson.month === targetMonth && sourceLesson.order === targetOrder) {
+    if (selectedIds.length === 0) {
       reset();
       return;
     }
 
     setLessons((prev) => {
-      const remaining = prev.filter((l) => l.id !== sourceId);
+      // Remove all selected lessons from their current locations
+      const remaining = prev.filter((l) => !selectedIds.includes(l.id));
+
       const targetCol = remaining.filter((l) => l.month === targetMonth);
-      const moved: Lesson = {
-        ...sourceLesson,
-        month: targetMonth,
-        order: targetOrder,
-      };
-      targetCol.push(moved);
+      const otherCols = remaining.filter((l) => l.month !== targetMonth);
 
-      const normalizedTarget = normalizeColumnOrders(targetCol);
-      const sourceMonth = sourceLesson.month;
+      // In drop on row, all moved lessons get the targetMonth and targetOrder (merging them into the row)
+      const movedLessons = prev
+        .filter((l) => selectedIds.includes(l.id))
+        .map((l) => ({
+          ...l,
+          month: targetMonth,
+          order: targetOrder,
+        }));
 
-      if (sourceMonth === targetMonth) {
-        return remaining.filter((l) => l.month !== targetMonth).concat(normalizedTarget);
-      } else {
-        const sourceCol = remaining.filter((l) => l.month === sourceMonth);
-        const normalizedSource = normalizeColumnOrders(sourceCol);
-        return remaining
-          .filter((l) => l.month !== sourceMonth && l.month !== targetMonth)
-          .concat(normalizedSource, normalizedTarget);
+      const combinedTarget = [...targetCol, ...movedLessons];
+      const normalizedTarget = normalizeColumnOrders(combinedTarget);
+
+      const sourceMonths = Array.from(
+        new Set(prev.filter((l) => selectedIds.includes(l.id)).map((l) => l.month))
+      ).filter((m) => m !== targetMonth);
+
+      let updatedOthers = otherCols;
+      for (const srcMonth of sourceMonths) {
+        const col = updatedOthers.filter((l) => l.month === srcMonth);
+        const normalizedCol = normalizeColumnOrders(col);
+        updatedOthers = updatedOthers.filter((l) => l.month !== srcMonth).concat(normalizedCol);
       }
+
+      return updatedOthers.concat(normalizedTarget);
     });
+
     reset();
   };
 
@@ -353,54 +376,98 @@ export default function KanbanBoard() {
     targetOrder: number | null
   ) => {
     e.preventDefault();
-    const sourceId = draggingId;
-    if (!sourceId) {
+    if (selectedIds.length === 0) {
       reset();
       return;
     }
 
-    const sourceLesson = lessons.find((l) => l.id === sourceId);
-    if (!sourceLesson) {
-      reset();
-      return;
-    }
+    // Sort the selected lessons based on their display order (active month order, then order index, then array index)
+    const getMonthIndex = (m: number) => activeMonths.indexOf(m);
+    const sortedSelected = [...lessons]
+      .filter((l) => selectedIds.includes(l.id))
+      .sort((a, b) => {
+        const aMonthIdx = getMonthIndex(a.month);
+        const bMonthIdx = getMonthIndex(b.month);
+        if (aMonthIdx !== bMonthIdx) {
+          return aMonthIdx - bMonthIdx;
+        }
+        if (a.order !== b.order) {
+          return a.order - b.order;
+        }
+        return lessons.indexOf(a) - lessons.indexOf(b);
+      });
 
     setLessons((prev) => {
-      const remaining = prev.filter((l) => l.id !== sourceId);
-      const movedLesson = { ...sourceLesson, month: targetMonth };
+      // Remove all selected lessons from their current locations
+      const remaining = prev.filter((l) => !selectedIds.includes(l.id));
 
-      let updatedTargetCol = remaining.filter((l) => l.month === targetMonth);
+      // Separate the target column from the rest of the board
+      let targetCol = remaining.filter((l) => l.month === targetMonth);
+      const otherCols = remaining.filter((l) => l.month !== targetMonth);
+
+      // Now, let's place the sortedSelected lessons into the target column.
+      // We need to figure out their new orders.
+      // A group can be defined by the unique (month, order) pair.
+      // Let's map each lesson to a group index.
+      const groups: string[] = [];
+      const lessonToGroupIdx = new Map<string, number>();
+      
+      for (const l of sortedSelected) {
+        const key = `${l.month}-${l.order}`;
+        let idx = groups.indexOf(key);
+        if (idx === -1) {
+          groups.push(key);
+          idx = groups.length - 1;
+        }
+        lessonToGroupIdx.set(l.id, idx);
+      }
+      
+      const numGroups = groups.length;
+
+      // Update orders of target column lessons that are >= targetOrder
+      let startOrder: number;
       if (targetOrder !== null) {
-        updatedTargetCol = updatedTargetCol.map((l) => {
+        // Shift existing lessons at or after targetOrder by numGroups
+        targetCol = targetCol.map((l) => {
           if (l.order >= targetOrder) {
-            return { ...l, order: l.order + 1 };
+            return { ...l, order: l.order + numGroups };
           }
           return l;
         });
-        movedLesson.order = targetOrder;
+        startOrder = targetOrder;
       } else {
-        const maxOrder =
-          updatedTargetCol.length > 0
-            ? Math.max(...updatedTargetCol.map((l) => l.order))
-            : 0;
-        movedLesson.order = maxOrder + 1;
+        const maxOrder = targetCol.length > 0 ? Math.max(...targetCol.map((l) => l.order)) : 0;
+        startOrder = maxOrder + 1;
       }
 
-      updatedTargetCol.push(movedLesson);
+      // Assign new month and order to the moved lessons
+      const movedLessons = sortedSelected.map((l) => {
+        const groupIdx = lessonToGroupIdx.get(l.id)!;
+        return {
+          ...l,
+          month: targetMonth,
+          order: startOrder + groupIdx,
+        };
+      });
 
-      const normalizedTarget = normalizeColumnOrders(updatedTargetCol);
-      const sourceMonth = sourceLesson.month;
+      // Combine target column and normalize
+      const combinedTarget = [...targetCol, ...movedLessons];
+      const normalizedTarget = normalizeColumnOrders(combinedTarget);
 
-      if (sourceMonth === targetMonth) {
-        return remaining.filter((l) => l.month !== targetMonth).concat(normalizedTarget);
-      } else {
-        const sourceCol = remaining.filter((l) => l.month === sourceMonth);
-        const normalizedSource = normalizeColumnOrders(sourceCol);
-        return remaining
-          .filter((l) => l.month !== sourceMonth && l.month !== targetMonth)
-          .concat(normalizedSource, normalizedTarget);
+      // Normalize any other columns that were affected (i.e. source columns)
+      const sourceMonths = Array.from(new Set(sortedSelected.map((l) => l.month)))
+        .filter((m) => m !== targetMonth); // targetMonth is handled separately
+
+      let updatedOthers = otherCols;
+      for (const srcMonth of sourceMonths) {
+        const col = updatedOthers.filter((l) => l.month === srcMonth);
+        const normalizedCol = normalizeColumnOrders(col);
+        updatedOthers = updatedOthers.filter((l) => l.month !== srcMonth).concat(normalizedCol);
       }
+
+      return updatedOthers.concat(normalizedTarget);
     });
+
     reset();
   };
 
@@ -408,6 +475,7 @@ export default function KanbanBoard() {
     setDraggingId(null);
     setDropTargetRow(null);
     setDropTargetGap(null);
+    setSelectedIds([]);
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -430,7 +498,7 @@ export default function KanbanBoard() {
   }
 
   return (
-    <div className="kanban-root" dir="rtl">
+    <div className="kanban-root" dir="rtl" onClick={handleBoardClick}>
       {/* ── Toolbar ── */}
       <header className="kanban-toolbar">
         <div className="kanban-toolbar__brand">
@@ -513,6 +581,7 @@ export default function KanbanBoard() {
                 month={month}
                 lessons={cols}
                 draggingId={draggingId}
+                selectedIds={selectedIds}
                 dropTargetRow={dropTargetRow}
                 dropTargetGap={dropTargetGap}
                 onDragStart={handleDragStart}
@@ -524,6 +593,7 @@ export default function KanbanBoard() {
                 onDeleteColumn={handleDeleteMonth}
                 onOpenNotifications={setActiveNotificationsLesson}
                 onEdit={setActiveEditLesson}
+                onSelectLesson={handleSelectLesson}
               />
             );
           })}

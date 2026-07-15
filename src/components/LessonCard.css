@@ -245,4 +245,18 @@
   gap: 4px;
 }
 
+/* Selected state with accent border, shadow, and custom background */
+.lesson-card--selected {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent), 0 4px 12px rgba(99, 102, 241, 0.2) !important;
+  background: linear-gradient(135deg, var(--card-bg) 0%, rgba(99, 102, 241, 0.12) 100%) !important;
+}
+
+/* Dragging state showing reduced opacity and dashed border */
+.lesson-card--dragging {
+  opacity: 0.4;
+  border-style: dashed !important;
+}
+
+
 

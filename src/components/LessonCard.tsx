@@ -8,6 +8,9 @@ interface Props {
   lesson: Lesson;
   onDragStart: (id: string) => void;
   isDraggingOver: boolean;
+  isSelected?: boolean;
+  isDragging?: boolean;
+  onSelect?: (id: string, isMulti: boolean) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
   onDelete: (id: string) => void;
@@ -29,6 +32,9 @@ export function LessonCard({
   lesson,
   onDragStart,
   isDraggingOver,
+  isSelected,
+  isDragging,
+  onSelect,
   onDragOver,
   onDrop,
   onDelete,
@@ -60,11 +66,18 @@ export function LessonCard({
 
   return (
     <div
-      className={`lesson-card ${isDraggingOver ? "lesson-card--drag-over" : ""}`}
+      className={`lesson-card ${isDraggingOver ? "lesson-card--drag-over" : ""} ${
+        isSelected ? "lesson-card--selected" : ""
+      } ${isDragging ? "lesson-card--dragging" : ""}`}
       draggable
       onDragStart={() => onDragStart(lesson.id)}
       onDragOver={onDragOver}
       onDrop={onDrop}
+      onClick={(e) => {
+        if (onSelect) {
+          onSelect(lesson.id, e.ctrlKey || e.metaKey);
+        }
+      }}
     >
       <div className="lesson-card__thumbnail-wrapper">
         {thumbnail ? (

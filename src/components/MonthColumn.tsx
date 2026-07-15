@@ -10,6 +10,7 @@ interface Props {
   month: number;
   lessons: Lesson[];
   draggingId: string | null;
+  selectedIds: string[];
   dropTargetRow: string | null;
   dropTargetGap: string | null;
   onDragStart: (id: string) => void;
@@ -21,12 +22,14 @@ interface Props {
   onDeleteColumn: (month: number) => void;
   onOpenNotifications: (lesson: Lesson) => void;
   onEdit: (lesson: Lesson) => void;
+  onSelectLesson: (id: string, isMulti: boolean) => void;
 }
 
 export function MonthColumn({
   month,
   lessons,
   draggingId,
+  selectedIds,
   dropTargetRow,
   dropTargetGap,
   onDragStart,
@@ -38,6 +41,7 @@ export function MonthColumn({
   onDeleteColumn,
   onOpenNotifications,
   onEdit,
+  onSelectLesson,
 }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const scrollIntervalRef = useRef<number | null>(null);
@@ -195,6 +199,9 @@ export function MonthColumn({
                     key={lesson.id}
                     lesson={lesson}
                     onDragStart={onDragStart}
+                    isSelected={selectedIds.includes(lesson.id)}
+                    isDragging={draggingId !== null && selectedIds.includes(lesson.id)}
+                    onSelect={onSelectLesson}
                     isDraggingOver={false}
                     onDragOver={(e) => {
                       // Row handles the dragover & drop events for the order group
