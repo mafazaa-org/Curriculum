@@ -4,11 +4,12 @@
   max-height: 90vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .playlist-modal .add-modal__form {
+  flex: 1;
   overflow-y: auto;
-  max-height: calc(90vh - 60px);
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
@@ -283,10 +284,6 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 12px 16px;
-  max-height: 180px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
 }
 
 .playlist-modal__preview-title {
